@@ -2,6 +2,7 @@ package com.tesla.api;
 
 import com.tesla.card.InvalidCardTransitionException;
 import com.tesla.card.NetworkApiException;
+import com.tesla.simulation.SimulationConflictException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +16,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(InvalidCardTransitionException.class)
     public ResponseEntity<Map<String, String>> handleInvalidTransition(InvalidCardTransitionException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(SimulationConflictException.class)
+    public ResponseEntity<Map<String, String>> handleSimulationConflict(SimulationConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 
