@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a22">
+  <title>Tesla | Card lifecycle lab</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Tesla Card Lifecycle Lab">
+        <span class="brand-mark">T</span>
+        <span><strong>TESLA</strong><small>ISSUER LAB</small></span>
+      </a>
+      <div class="environment"><span class="pulse"></span> LOCAL SIMULATOR</div>
+      <p class="nav-label">WORKSPACE</p>
+      <nav>
+        <a class="nav-link active" href="#overview"><span>◫</span> Overview</a>
+        <a class="nav-link" href="#accounts"><span>◎</span> Accounts & cards</a>
+        <a class="nav-link" href="#transactions"><span>⇄</span> Transactions</a>
+        <a class="nav-link" href="#activity"><span>≡</span> Activity log</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="safety-note"><span>i</span><p>Sandbox only. Never enter real card numbers, PINs, or payment credentials.</p></div>
+        <a class="docs-link" href="/swagger-ui/index.html" target="_blank" rel="noreferrer">Open API Explorer <span>↗</span></a>
+        <small class="version">CARD LIFECYCLE SIMULATOR · 1.0</small>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="breadcrumb">WORKSPACE <span>/</span> CARD LIFECYCLE</div>
+        <div class="api-origin"><span class="status-dot"></span><span id="api-origin">Connecting to local API</span></div>
+      </header>
+
+      <section id="overview" class="hero">
+        <div>
+          <div class="eyebrow">API TEST WORKBENCH <span class="eyebrow-line"></span></div>
+          <h1>Card lifecycle,<br><em>under your control.</em></h1>
+          <p>Run a complete issuer journey from customer onboarding to transaction reconciliation. Every action calls the local REST API.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#accounts">Start with an account <span>↓</span></a>
+            <a class="button button-quiet" href="/swagger-ui/index.html" target="_blank" rel="noreferrer">Explore API <span>↗</span></a>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          <div class="hero-card"><div class="card-chip"></div><div class="card-wave">)))</div><div class="card-bottom"><span>MOCK TOKEN</span><strong>•••• 2048</strong></div></div>
+          <span class="art-caption">SIMULATED · NOT A PAYMENT CARD</span>
+        </div>
+      </section>
+
+      <section class="config-bar panel">
+        <div class="config-copy"><span class="step-number">00</span><div><strong>Connection settings</strong><small>Requests are sent to this app's API.</small></div></div>
+        <label class="inline-field">API base URL<input id="base-url" type="url" value="" autocomplete="url" aria-label="API base URL"></label>
+        <label class="inline-field key-field">Tesla API key<input id="api-key" type="password" placeholder="Enter your local API key" autocomplete="off" aria-label="Tesla API key"></label>
+        <button id="save-settings" class="button button-small" type="button">Save</button>
+      </section>
+
+      <section id="accounts" class="workspace-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">01 — CUSTOMER ONBOARDING</div><h2>Accounts & cards</h2></div>
+          <span class="section-hint">Mock credit approval · Visa · Mastercard · Amex</span>
+        </div>
+        <div class="grid-two">
+          <article class="panel form-panel">
+            <div class="panel-heading"><div class="icon-box icon-lime">01</div><div><h3>Open an account</h3><p>Submit a customer application for simulated credit approval.</p></div></div>
+            <form id="application-form" class="form-grid">
+              <label>Customer reference<input name="customerReference" required maxlength="100" placeholder="demo-customer-001"></label>
+              <label>Requested credit limit <span class="field-unit">USD</span><input name="requestedCreditLimit" required type="number" min="0.01" max="10000000" step="0.01" value="1000.00"></label>
+              <button class="button button-primary" type="submit">Submit application <span>→</span></button>
+            </form>
+            <div id="application-result" class="result-slot"></div>
+          </article>
+
+          <article class="panel form-panel">
+            <div class="panel-heading"><div class="icon-box icon-blue">02</div><div><h3>Issue a card</h3><p>Issue a tokenized mock card against an approved account.</p></div></div>
+            <form id="issue-form" class="form-grid">
+              <label>Account reference<input name="accountReference" required placeholder="acct_…" list="account-options"></label>
+              <datalist id="account-options"></datalist>
+              <div class="field-row">
+                <label>Payment network<select name="network"><option value="VISA">Visa</option><option value="MASTERCARD">Mastercard</option><option value="AMEX">American Express</option></select></label>
+                <label>Daily spend limit <span class="field-unit">USD</span><input name="dailyLimit" required type="number" min="0.01" step="0.01" value="500.00"></label>
+              </div>
+              <button class="button button-primary" type="submit">Issue card <span>→</span></button>
+            </form>
+            <div id="card-result" class="result-slot"></div>
+          </article>
+        </div>
+
+        <article class="panel maintenance-panel">
+          <div class="panel-heading"><div class="icon-box icon-violet">03</div><div><h3>Card controls</h3><p>Activate, suspend, lock, replace or close a card.</p></div></div>
+          <div class="control-grid">
+            <label>Card reference<input id="control-card-reference" placeholder="card_…" list="card-options"></label>
+            <datalist id="card-options"></datalist>
+            <label>Daily limit <span class="field-unit">USD</span><input id="control-daily-limit" type="number" min="0.01" step="0.01" value="250.00"></label>
+            <label>Secure PIN flow reference<input id="pin-reference" placeholder="vault-change-request-001"></label>
+          </div>
+          <div class="action-groups">
+            <div class="action-group"><small>LIFECYCLE</small><div class="button-wrap">
+              <button class="button button-outline" data-card-action="activate">Activate</button><button class="button button-outline" data-card-action="suspend">Suspend</button><button class="button button-outline" data-card-action="unblock">Unblock</button><button class="button button-outline" data-card-action="block">Block</button><button class="button button-outline" data-card-action="replace">Replace</button><button class="button button-outline button-danger" data-card-action="close">Close</button>
+            </div></div>
+            <div class="action-group"><small>CONTROLS</small><div class="button-wrap">
+              <button class="button button-outline" data-card-action="lock">Temporary lock</button><button class="button button-outline" data-card-action="unlock">Unlock</button><button class="button button-outline" data-card-action="limits">Update limit</button><button class="button button-outline" data-card-action="pin-change">PIN change reference</button><button class="button button-quiet" data-card-action="details">Get card details</button>
+            </div></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="transactions" class="workspace-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">02 — PAYMENT PROCESSING</div><h2>Transaction lifecycle</h2></div>
+          <span class="section-hint">Initiate → authorize → clear → settle → post</span>
+        </div>
+        <div class="grid-two">
+          <article class="panel form-panel">
+            <div class="panel-heading"><div class="icon-box icon-orange">04</div><div><h3>Initiate a transaction</h3><p>Create a simulated card-present or online purchase.</p></div></div>
+            <form id="transaction-form" class="form-grid">
+              <label>Card reference<input name="cardReference" required placeholder="card_…" list="card-options"></label>
+              <label>Merchant reference<input name="merchantReference" required placeholder="demo-merchant-001"></label>
+              <div class="field-row">
+                <label>Amount<input name="amount" required type="number" min="0.01" step="0.01" value="25.00"></label>
+                <label>Currency<select name="currency"><option>USD</option><option>CAD</option><option>EUR</option><option>GBP</option><option>INR</option></select></label>
+              </div>
+              <button class="button button-primary" type="submit">Initiate transaction <span>→</span></button>
+            </form>
+            <div id="transaction-result" class="result-slot"></div>
+          </article>
+
+          <article class="panel form-panel">
+            <div class="panel-heading"><div class="icon-box icon-red">05</div><div><h3>Advance transaction</h3><p>Process a transaction through its next lifecycle stage.</p></div></div>
+            <label class="block-label">Transaction reference<input id="stage-transaction-reference" placeholder="txn_…" list="transaction-options"></label>
+            <datalist id="transaction-options"></datalist>
+            <div class="button-wrap stage-buttons">
+              <button class="button button-outline" data-txn-action="authorize">Authorize</button><button class="button button-outline" data-txn-action="reverse">Reverse / release hold</button><button class="button button-outline" data-txn-action="clear">Clear</button><button class="button button-outline" data-txn-action="settle">Settle</button><button class="button button-primary" data-txn-action="post">Post to ledger</button>
+            </div>
+            <div class="field-row event-fields">
+              <label>Event amount<input id="event-amount" type="number" min="0.01" step="0.01" value="5.00"></label>
+              <label>Reason<input id="event-reason" value="Test adjustment"></label>
+            </div>
+            <div class="button-wrap event-buttons">
+              <button class="button button-outline" data-txn-action="refund">Refund</button><button class="button button-outline" data-txn-action="chargeback">Chargeback</button><button class="button button-outline" data-txn-action="disputes">Dispute</button><button class="button button-outline" data-txn-action="fees">Fee</button><button class="button button-outline" data-txn-action="adjustments">Adjustment</button><button class="button button-quiet" data-txn-action="details">Get transaction</button>
+            </div>
+            <div id="transaction-stage-result" class="result-slot"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="workspace-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">03 — ACCOUNT VIEW</div><h2>History & reconciliation</h2></div>
+          <span class="section-hint">Compare posted balance against ledger entries.</span>
+        </div>
+        <article class="panel lookup-panel">
+          <label class="lookup-input">Account reference<input id="lookup-account-reference" placeholder="acct_…" list="account-options"></label>
+          <div class="button-wrap"><button class="button button-outline" data-account-action="account">Account summary</button><button class="button button-outline" data-account-action="transactions">Transaction history</button><button class="button button-primary" data-account-action="reconciliation">Reconcile ledger <span>→</span></button></div>
+          <div id="account-result" class="result-slot"></div>
+        </article>
+      </section>
+
+      <section id="activity" class="workspace-section activity-section">
+        <div class="section-heading"><div><div class="eyebrow">LIVE REQUESTS</div><h2>Activity log</h2></div><button id="clear-log" class="button button-quiet" type="button">Clear activity</button></div>
+        <div id="activity-log" class="activity-log"><div class="empty-state"><span>⌁</span><p>Your API requests and responses will appear here.</p><small>Start with a customer application above.</small></div></div>
+      </section>
+
+      <footer><span>TESLA CARD LIFECYCLE LAB</span><span>LOCAL MOCK MODE · DATA RESETS WHEN THE SERVER RESTARTS</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

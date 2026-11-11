@@ -1,3 +1,5 @@
 com\tesla\api\CardLifecycleControllerTest$CardRequest.class
 com\tesla\api\CardLifecycleRestAssuredTest.class
+com\tesla\api\WebWorkbenchRestAssuredTest.class
 com\tesla\api\CardLifecycleControllerTest.class
+com\tesla\api\CardSimulationRestAssuredTest.class

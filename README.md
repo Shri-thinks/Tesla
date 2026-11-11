@@ -13,6 +13,18 @@ mvn spring-boot:run
 By default, the service listens on `http://127.0.0.1:8080` and uses in-memory mock state. Stop any already-running instance before restarting it to load code changes.
 The API requires the `X-Tesla-API-Key` header. The default key (`local-development-only`) is for local development only; set `TESLA_API_KEY` to a secret value before use in any shared environment.
 
+## Website and API testing
+
+After starting the app:
+
+- Open the lifecycle website at [http://127.0.0.1:8080](http://127.0.0.1:8080).
+- Open the interactive Swagger API explorer at [http://127.0.0.1:8080/swagger-ui/index.html](http://127.0.0.1:8080/swagger-ui/index.html).
+- Fetch the OpenAPI definition at [http://127.0.0.1:8080/v3/api-docs](http://127.0.0.1:8080/v3/api-docs).
+
+In the website's Connection settings, enter `local-development-only` as the API key and save. The website sends API requests to the local backend and shows request/response details in its activity log. The key is kept only in the current browser tab's session storage. In Swagger UI, click **Authorize** and enter the same value for `TeslaApiKey`. The API key is required for API calls; the website files and API documentation can be loaded without it.
+
+The app binds to loopback (`127.0.0.1`) by default, keeping the mock API local to the development machine. It is not intended to be exposed to a public network.
+
 ## Mock account, card, and transaction API
 
 Every request requires `X-Tesla-API-Key: local-development-only` and JSON content type when sending a body. The simulator creates opaque references and a clearly marked mock token; it never creates or accepts a PAN, CVV, or PIN. The PIN-change operation accepts only a reference to a secure external PIN-change flow.

@@ -12,4 +12,9 @@ D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\card\MockCardNetworkClie
 D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\card\Network.java
 D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\card\NetworkApiException.java
 D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\config\NetworkClientConfiguration.java
+D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\config\OpenApiConfiguration.java
+D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\simulation\CardSimulationController.java
+D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\simulation\CardSimulationModels.java
+D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\simulation\CardSimulationService.java
+D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\simulation\SimulationConflictException.java
 D:\Java-eclipse-workspace\Tesla\src\main\java\com\tesla\TeslaApplication.java
