@@ -52,6 +52,8 @@ Database connection settings can be overridden with `TESLA_DB_URL`, `TESLA_DB_US
 
 ## Website and API testing
 
+See [TEST_SCENARIOS.md](./TEST_SCENARIOS.md) for positive and negative test cases, expected assertions, and guidance on which checks belong in the UI, API, or database layer.
+
 After starting the app:
 
 - Open the lifecycle website at [http://127.0.0.1:8080](http://127.0.0.1:8080).
