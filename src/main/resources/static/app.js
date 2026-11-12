@@ -13,6 +13,7 @@ const settings = {
 };
 settings.baseUrl.value = sessionSettings.baseUrl || window.location.origin;
 settings.apiKey.value = sessionSettings.apiKey || "";
+byId("test-run-id").value = `run-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
 renderReferenceOptions();
 
 byId("save-settings").addEventListener("click", () => {
@@ -26,63 +27,87 @@ byId("save-settings").addEventListener("click", () => {
     baseUrl,
     apiKey: settings.apiKey.value
   }));
-  byId("api-origin").textContent = baseUrl;
+  setConnectionState("unchecked", "API not checked");
   showToast("Connection settings saved for this browser tab.");
 });
-byId("api-origin").textContent = settings.baseUrl.value;
+byId("api-origin").textContent = "API not checked";
+
+byId("apply-test-run").addEventListener("click", () => {
+  const runId = byId("test-run-id").value.trim().replace(/[^A-Za-z0-9_-]/g, "-");
+  if (!runId) {
+    showToast("Enter a run ID first.");
+    return;
+  }
+  byId("test-run-id").value = runId;
+  byId("application-form").elements.customerReference.value = `${runId}-customer`;
+  byId("transaction-form").elements.merchantReference.value = `${runId}-merchant`;
+  showToast("Unique customer and merchant references applied.");
+});
 
 byId("application-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const values = formValues(event.currentTarget);
-  const result = await apiRequest("POST", "/api/applications", {
-    ...values,
-    requestedCreditLimit: Number(values.requestedCreditLimit),
-    idempotencyKey: makeKey()
+  const form = event.currentTarget;
+  await withBusy(form, async () => {
+    const values = formValues(form);
+    setResultPending("application-result");
+    const result = await apiRequest("POST", "/api/applications", {
+      ...values,
+      requestedCreditLimit: Number(values.requestedCreditLimit),
+      idempotencyKey: makeKey()
+    });
+    if (!result.ok) {
+      showResult("application-result", result, "Application failed");
+      return;
+    }
+    const application = result.data;
+    if (application.accountReference) {
+      remember("accounts", application.accountReference);
+      byId("issue-form").elements.accountReference.value = application.accountReference;
+      byId("lookup-account-reference").value = application.accountReference;
+    }
+    showResult("application-result", result, application.status === "APPROVED" ? "Application approved" : "Application declined");
   });
-  if (!result.ok) {
-    showResult("application-result", result, "Application failed");
-    return;
-  }
-  const application = result.data;
-  if (application.accountReference) {
-    remember("accounts", application.accountReference);
-    byId("issue-form").elements.accountReference.value = application.accountReference;
-    byId("lookup-account-reference").value = application.accountReference;
-  }
-  showResult("application-result", result, application.status === "APPROVED" ? "Application approved" : "Application declined");
 });
 
 byId("issue-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const values = formValues(event.currentTarget);
-  const accountReference = values.accountReference.trim();
-  const result = await apiRequest("POST", `/api/accounts/${encodeURIComponent(accountReference)}/cards`, {
-    network: values.network,
-    idempotencyKey: makeKey(),
-    dailyLimit: Number(values.dailyLimit)
+  const form = event.currentTarget;
+  await withBusy(form, async () => {
+    const values = formValues(form);
+    const accountReference = values.accountReference.trim();
+    setResultPending("card-result");
+    const result = await apiRequest("POST", `/api/accounts/${encodeURIComponent(accountReference)}/cards`, {
+      network: values.network,
+      idempotencyKey: makeKey(),
+      dailyLimit: Number(values.dailyLimit)
+    });
+    if (result.ok) {
+      remember("cards", result.data.cardReference);
+      byId("control-card-reference").value = result.data.cardReference;
+      byId("transaction-form").elements.cardReference.value = result.data.cardReference;
+      showToast(`Card issued: ${result.data.cardReference}`);
+    }
+    showResult("card-result", result, result.ok ? "Card issued" : "Card issuance failed");
   });
-  if (result.ok) {
-    remember("cards", result.data.cardReference);
-    byId("control-card-reference").value = result.data.cardReference;
-    byId("transaction-form").elements.cardReference.value = result.data.cardReference;
-    showToast(`Card issued: ${result.data.cardReference}`);
-  }
-  showResult("card-result", result, result.ok ? "Card issued" : "Card issuance failed");
 });
 
 byId("transaction-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const values = formValues(event.currentTarget);
-  const result = await apiRequest("POST", "/api/transactions/initiate", {
-    ...values,
-    amount: Number(values.amount),
-    idempotencyKey: makeKey()
+  const form = event.currentTarget;
+  await withBusy(form, async () => {
+    const values = formValues(form);
+    setResultPending("transaction-result");
+    const result = await apiRequest("POST", "/api/transactions/initiate", {
+      ...values,
+      amount: Number(values.amount),
+      idempotencyKey: makeKey()
+    });
+    if (result.ok) {
+      remember("transactions", result.data.transactionReference);
+      byId("stage-transaction-reference").value = result.data.transactionReference;
+    }
+    showResult("transaction-result", result, result.ok ? "Transaction initiated" : "Transaction failed");
   });
-  if (result.ok) {
-    remember("transactions", result.data.transactionReference);
-    byId("stage-transaction-reference").value = result.data.transactionReference;
-  }
-  showResult("transaction-result", result, result.ok ? "Transaction initiated" : "Transaction failed");
 });
 
 document.querySelectorAll("[data-card-action]").forEach((button) => {
@@ -110,13 +135,16 @@ document.querySelectorAll("[data-card-action]").forEach((button) => {
         dailyLimit: Number(byId("control-daily-limit").value)
       };
     }
-    const result = await apiRequest(method, path, body);
-    if (result.ok && action === "replace") {
-      remember("cards", result.data.cardReference);
-      byId("control-card-reference").value = result.data.cardReference;
-      byId("transaction-form").elements.cardReference.value = result.data.cardReference;
-    }
-    showResult("card-result", result, result.ok ? `Card ${action}` : `Card ${action} failed`);
+    await withBusy(button, async () => {
+      setResultPending("card-result");
+      const result = await apiRequest(method, path, body);
+      if (result.ok && action === "replace") {
+        remember("cards", result.data.cardReference);
+        byId("control-card-reference").value = result.data.cardReference;
+        byId("transaction-form").elements.cardReference.value = result.data.cardReference;
+      }
+      showResult("card-result", result, result.ok ? `Card ${action}` : `Card ${action} failed`);
+    });
   });
 });
 
@@ -142,8 +170,11 @@ document.querySelectorAll("[data-txn-action]").forEach((button) => {
     } else if (action === "disputes") {
       body = { reason: byId("event-reason").value.trim(), idempotencyKey: makeKey() };
     }
-    const result = await apiRequest(method, path, body);
-    showResult("transaction-stage-result", result, result.ok ? `Transaction ${action}` : `Transaction ${action} failed`);
+    await withBusy(button, async () => {
+      setResultPending("transaction-stage-result");
+      const result = await apiRequest(method, path, body);
+      showResult("transaction-stage-result", result, result.ok ? `Transaction ${action}` : `Transaction ${action} failed`);
+    });
   });
 });
 
@@ -153,8 +184,11 @@ document.querySelectorAll("[data-account-action]").forEach((button) => {
     if (!accountReference) return showToast("Enter an account reference first.");
     const action = button.dataset.accountAction;
     const suffix = action === "account" ? "" : action === "transactions" ? "/transactions" : "/reconciliation";
-    const result = await apiRequest("GET", `/api/accounts/${encodeURIComponent(accountReference)}${suffix}`);
-    showResult("account-result", result, result.ok ? actionLabel(action) : "Account request failed");
+    await withBusy(button, async () => {
+      setResultPending("account-result");
+      const result = await apiRequest("GET", `/api/accounts/${encodeURIComponent(accountReference)}${suffix}`);
+      showResult("account-result", result, result.ok ? actionLabel(action) : "Account request failed");
+    });
   });
 });
 
@@ -170,13 +204,16 @@ async function apiRequest(method, path, body) {
   const baseUrl = settings.baseUrl.value.trim().replace(/\/+$/, "");
   const apiKey = settings.apiKey.value.trim();
   if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(baseUrl)) {
+    setConnectionState("needs-configuration", "Use a localhost API URL");
     showToast("For local safety, use a localhost API URL.");
     return { ok: false, status: 0, data: { error: "API base URL must use localhost or 127.0.0.1." } };
   }
   if (!apiKey) {
+    setConnectionState("needs-configuration", "API key required");
     showToast("Enter your Tesla API key in Connection settings.");
     return { ok: false, status: 0, data: { error: "API key is required." } };
   }
+  setConnectionState("checking", "Request in progress");
   const headers = { "X-Tesla-API-Key": apiKey, "Accept": "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   let response;
@@ -191,32 +228,79 @@ async function apiRequest(method, path, body) {
     try { data = text ? JSON.parse(text) : {}; } catch { data = { response: text }; }
   } catch (error) {
     data = { error: `Could not connect to the API: ${error.message}` };
+    setConnectionState("unreachable", "API unavailable");
     addActivity(method, path, 0, data, body);
     return { ok: false, status: 0, data };
   }
   addActivity(method, path, response.status, data, body);
   if (response.status === 401) {
     data.error = "Unauthorized. Check the API key. The default local key is local-development-only.";
+    setConnectionState("unauthorized", "API reachable · key rejected");
+  } else {
+    setConnectionState(response.ok ? "ready" : "reachable-with-error",
+      response.ok ? "API reachable" : `API reachable · HTTP ${response.status}`);
   }
   return { ok: response.ok, status: response.status, data };
 }
 
 function showResult(targetId, result, title) {
   const container = byId(targetId);
+  container.dataset.state = result.ok ? "success" : "error";
+  container.dataset.httpStatus = String(result.status);
   container.replaceChildren();
   const card = document.createElement("div");
   card.className = `result-card${result.ok ? "" : " is-error"}`;
+  card.dataset.testid = "result-card";
   const heading = document.createElement("div");
   heading.className = "result-title";
   const label = document.createElement("span");
   label.textContent = title;
   const status = document.createElement("span");
   status.textContent = result.status ? `HTTP ${result.status}` : "CONNECTION ERROR";
+  status.dataset.testid = "result-http-status";
+  status.dataset.httpStatus = String(result.status);
   heading.append(label, status);
   const payload = document.createElement("pre");
   payload.textContent = JSON.stringify(result.data, null, 2);
+  payload.dataset.testid = "result-response";
   card.append(heading, payload);
   container.append(card);
+}
+
+function setResultPending(targetId) {
+  const container = byId(targetId);
+  container.dataset.state = "loading";
+  container.removeAttribute("data-http-status");
+  container.replaceChildren();
+  const pending = document.createElement("div");
+  pending.className = "result-pending";
+  pending.textContent = "Request in progress…";
+  pending.dataset.testid = "result-pending";
+  container.append(pending);
+}
+
+function setConnectionState(state, message) {
+  const connection = byId("api-connection");
+  connection.dataset.state = state;
+  connection.title = message;
+  byId("api-origin").textContent = message;
+}
+
+async function withBusy(element, operation) {
+  const submitButton = element instanceof HTMLFormElement
+    ? element.querySelector('button[type="submit"]')
+    : element;
+  const wasDisabled = submitButton ? submitButton.disabled : false;
+  element.setAttribute("aria-busy", "true");
+  element.dataset.state = "loading";
+  if (submitButton) submitButton.disabled = true;
+  try {
+    return await operation();
+  } finally {
+    element.setAttribute("aria-busy", "false");
+    element.dataset.state = "complete";
+    if (submitButton) submitButton.disabled = wasDisabled;
+  }
 }
 
 function addActivity(method, path, status, data, requestBody) {
@@ -224,6 +308,8 @@ function addActivity(method, path, status, data, requestBody) {
   if (log.querySelector(".empty-state")) log.replaceChildren();
   const entry = document.createElement("div");
   entry.className = "activity-entry";
+  entry.dataset.testid = "activity-entry";
+  entry.dataset.state = status >= 200 && status < 300 ? "success" : "error";
   const methodLabel = document.createElement("span");
   methodLabel.className = "activity-method";
   methodLabel.textContent = method;
@@ -237,6 +323,7 @@ function addActivity(method, path, status, data, requestBody) {
   const statusLabel = document.createElement("span");
   statusLabel.className = `activity-status${status < 200 || status >= 300 ? " error" : ""}`;
   statusLabel.textContent = status || "ERROR";
+  statusLabel.dataset.httpStatus = String(status);
   entry.append(methodLabel, info, statusLabel);
   log.prepend(entry);
   while (log.children.length > MAX_ACTIVITY) log.lastElementChild.remove();

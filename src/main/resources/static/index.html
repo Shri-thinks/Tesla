@@ -32,7 +32,7 @@
     <main>
       <header class="topbar">
         <div class="breadcrumb">WORKSPACE <span>/</span> CARD LIFECYCLE</div>
-        <div class="api-origin"><span class="status-dot"></span><span id="api-origin">Connecting to local API</span></div>
+        <div id="api-connection" class="api-origin" data-testid="api-connection" data-state="unchecked"><span class="status-dot"></span><span id="api-origin">API not checked</span></div>
       </header>
 
       <section id="overview" class="hero">
@@ -52,11 +52,21 @@
         </div>
       </section>
 
-      <section class="config-bar panel">
+      <section class="config-bar panel" data-testid="connection-settings">
         <div class="config-copy"><span class="step-number">00</span><div><strong>Connection settings</strong><small>Requests are sent to this app's API.</small></div></div>
-        <label class="inline-field">API base URL<input id="base-url" type="url" value="" autocomplete="url" aria-label="API base URL"></label>
-        <label class="inline-field key-field">Tesla API key<input id="api-key" type="password" placeholder="Enter your local API key" autocomplete="off" aria-label="Tesla API key"></label>
-        <button id="save-settings" class="button button-small" type="button">Save</button>
+        <label class="inline-field">API base URL<input id="base-url" data-testid="api-base-url" type="url" value="" autocomplete="url" aria-label="API base URL"></label>
+        <label class="inline-field key-field">Tesla API key<input id="api-key" data-testid="api-key" type="password" placeholder="Enter your local API key" autocomplete="off" aria-label="Tesla API key"></label>
+        <button id="save-settings" data-testid="save-settings" class="button button-small" type="button">Save</button>
+      </section>
+
+      <section class="test-data-bar panel" data-testid="test-data-tools">
+        <div class="test-data-copy">
+          <strong>Test run references</strong>
+          <small>Use a unique run ID to keep each run’s customer and merchant data distinct.</small>
+        </div>
+        <label class="inline-field">Run ID<input id="test-run-id" data-testid="test-run-id" maxlength="60" autocomplete="off"></label>
+        <button id="apply-test-run" data-testid="apply-test-run" class="button button-small" type="button">Apply references</button>
+        <small class="persistence-note">Simulator records persist in the configured database. This tab keeps recent references for convenience.</small>
       </section>
 
       <section id="accounts" class="workspace-section">
@@ -67,43 +77,43 @@
         <div class="grid-two">
           <article class="panel form-panel">
             <div class="panel-heading"><div class="icon-box icon-lime">01</div><div><h3>Open an account</h3><p>Submit a customer application for simulated credit approval.</p></div></div>
-            <form id="application-form" class="form-grid">
-              <label>Customer reference<input name="customerReference" required maxlength="100" placeholder="demo-customer-001"></label>
-              <label>Requested credit limit <span class="field-unit">USD</span><input name="requestedCreditLimit" required type="number" min="0.01" max="10000000" step="0.01" value="1000.00"></label>
-              <button class="button button-primary" type="submit">Submit application <span>→</span></button>
+            <form id="application-form" data-testid="application-form" class="form-grid" aria-busy="false" data-state="idle">
+              <label>Customer reference<input name="customerReference" data-testid="customer-reference" required maxlength="100" placeholder="demo-customer-001"></label>
+              <label>Requested credit limit <span class="field-unit">USD</span><input name="requestedCreditLimit" data-testid="requested-credit-limit" required type="number" min="0.01" max="10000000" step="0.01" value="1000.00"></label>
+              <button class="button button-primary" data-testid="submit-application" type="submit">Submit application <span>→</span></button>
             </form>
-            <div id="application-result" class="result-slot"></div>
+            <div id="application-result" data-testid="application-result" class="result-slot" role="status" aria-live="polite" data-state="idle"></div>
           </article>
 
           <article class="panel form-panel">
             <div class="panel-heading"><div class="icon-box icon-blue">02</div><div><h3>Issue a card</h3><p>Issue a tokenized mock card against an approved account.</p></div></div>
-            <form id="issue-form" class="form-grid">
-              <label>Account reference<input name="accountReference" required placeholder="acct_…" list="account-options"></label>
+            <form id="issue-form" data-testid="issue-card-form" class="form-grid" aria-busy="false" data-state="idle">
+              <label>Account reference<input name="accountReference" data-testid="issue-account-reference" required placeholder="acct_…" list="account-options"></label>
               <datalist id="account-options"></datalist>
               <div class="field-row">
                 <label>Payment network<select name="network"><option value="VISA">Visa</option><option value="MASTERCARD">Mastercard</option><option value="AMEX">American Express</option></select></label>
                 <label>Daily spend limit <span class="field-unit">USD</span><input name="dailyLimit" required type="number" min="0.01" step="0.01" value="500.00"></label>
               </div>
-              <button class="button button-primary" type="submit">Issue card <span>→</span></button>
+              <button class="button button-primary" data-testid="issue-card" type="submit">Issue card <span>→</span></button>
             </form>
-            <div id="card-result" class="result-slot"></div>
+            <div id="card-result" data-testid="card-result" class="result-slot" role="status" aria-live="polite" data-state="idle"></div>
           </article>
         </div>
 
         <article class="panel maintenance-panel">
           <div class="panel-heading"><div class="icon-box icon-violet">03</div><div><h3>Card controls</h3><p>Activate, suspend, lock, replace or close a card.</p></div></div>
-          <div class="control-grid">
-            <label>Card reference<input id="control-card-reference" placeholder="card_…" list="card-options"></label>
+          <div class="control-grid" data-testid="card-controls">
+            <label>Card reference<input id="control-card-reference" data-testid="control-card-reference" placeholder="card_…" list="card-options"></label>
             <datalist id="card-options"></datalist>
-            <label>Daily limit <span class="field-unit">USD</span><input id="control-daily-limit" type="number" min="0.01" step="0.01" value="250.00"></label>
-            <label>Secure PIN flow reference<input id="pin-reference" placeholder="vault-change-request-001"></label>
+            <label>Daily limit <span class="field-unit">USD</span><input id="control-daily-limit" data-testid="control-daily-limit" type="number" min="0.01" step="0.01" value="250.00"></label>
+            <label>Secure PIN flow reference<input id="pin-reference" data-testid="pin-change-reference" placeholder="vault-change-request-001"></label>
           </div>
           <div class="action-groups">
             <div class="action-group"><small>LIFECYCLE</small><div class="button-wrap">
-              <button class="button button-outline" data-card-action="activate">Activate</button><button class="button button-outline" data-card-action="suspend">Suspend</button><button class="button button-outline" data-card-action="unblock">Unblock</button><button class="button button-outline" data-card-action="block">Block</button><button class="button button-outline" data-card-action="replace">Replace</button><button class="button button-outline button-danger" data-card-action="close">Close</button>
+              <button class="button button-outline" data-testid="card-activate" data-card-action="activate">Activate</button><button class="button button-outline" data-testid="card-suspend" data-card-action="suspend">Suspend</button><button class="button button-outline" data-testid="card-unblock" data-card-action="unblock">Unblock</button><button class="button button-outline" data-testid="card-block" data-card-action="block">Block</button><button class="button button-outline" data-testid="card-replace" data-card-action="replace">Replace</button><button class="button button-outline button-danger" data-testid="card-close" data-card-action="close">Close</button>
             </div></div>
             <div class="action-group"><small>CONTROLS</small><div class="button-wrap">
-              <button class="button button-outline" data-card-action="lock">Temporary lock</button><button class="button button-outline" data-card-action="unlock">Unlock</button><button class="button button-outline" data-card-action="limits">Update limit</button><button class="button button-outline" data-card-action="pin-change">PIN change reference</button><button class="button button-quiet" data-card-action="details">Get card details</button>
+              <button class="button button-outline" data-testid="card-lock" data-card-action="lock">Temporary lock</button><button class="button button-outline" data-testid="card-unlock" data-card-action="unlock">Unlock</button><button class="button button-outline" data-testid="card-update-limit" data-card-action="limits">Update limit</button><button class="button button-outline" data-testid="card-pin-change" data-card-action="pin-change">PIN change reference</button><button class="button button-quiet" data-testid="card-details" data-card-action="details">Get card details</button>
             </div></div>
           </div>
         </article>
@@ -117,33 +127,33 @@
         <div class="grid-two">
           <article class="panel form-panel">
             <div class="panel-heading"><div class="icon-box icon-orange">04</div><div><h3>Initiate a transaction</h3><p>Create a simulated card-present or online purchase.</p></div></div>
-            <form id="transaction-form" class="form-grid">
-              <label>Card reference<input name="cardReference" required placeholder="card_…" list="card-options"></label>
-              <label>Merchant reference<input name="merchantReference" required placeholder="demo-merchant-001"></label>
+            <form id="transaction-form" data-testid="transaction-form" class="form-grid" aria-busy="false" data-state="idle">
+              <label>Card reference<input name="cardReference" data-testid="transaction-card-reference" required placeholder="card_…" list="card-options"></label>
+              <label>Merchant reference<input name="merchantReference" data-testid="merchant-reference" required placeholder="demo-merchant-001"></label>
               <div class="field-row">
                 <label>Amount<input name="amount" required type="number" min="0.01" step="0.01" value="25.00"></label>
                 <label>Currency<select name="currency"><option>USD</option><option>CAD</option><option>EUR</option><option>GBP</option><option>INR</option></select></label>
               </div>
-              <button class="button button-primary" type="submit">Initiate transaction <span>→</span></button>
+              <button class="button button-primary" data-testid="initiate-transaction" type="submit">Initiate transaction <span>→</span></button>
             </form>
-            <div id="transaction-result" class="result-slot"></div>
+            <div id="transaction-result" data-testid="transaction-result" class="result-slot" role="status" aria-live="polite" data-state="idle"></div>
           </article>
 
           <article class="panel form-panel">
             <div class="panel-heading"><div class="icon-box icon-red">05</div><div><h3>Advance transaction</h3><p>Process a transaction through its next lifecycle stage.</p></div></div>
-            <label class="block-label">Transaction reference<input id="stage-transaction-reference" placeholder="txn_…" list="transaction-options"></label>
+            <label class="block-label">Transaction reference<input id="stage-transaction-reference" data-testid="stage-transaction-reference" placeholder="txn_…" list="transaction-options"></label>
             <datalist id="transaction-options"></datalist>
             <div class="button-wrap stage-buttons">
-              <button class="button button-outline" data-txn-action="authorize">Authorize</button><button class="button button-outline" data-txn-action="reverse">Reverse / release hold</button><button class="button button-outline" data-txn-action="clear">Clear</button><button class="button button-outline" data-txn-action="settle">Settle</button><button class="button button-primary" data-txn-action="post">Post to ledger</button>
+              <button class="button button-outline" data-testid="transaction-authorize" data-txn-action="authorize">Authorize</button><button class="button button-outline" data-testid="transaction-reverse" data-txn-action="reverse">Reverse / release hold</button><button class="button button-outline" data-testid="transaction-clear" data-txn-action="clear">Clear</button><button class="button button-outline" data-testid="transaction-settle" data-txn-action="settle">Settle</button><button class="button button-primary" data-testid="transaction-post" data-txn-action="post">Post to ledger</button>
             </div>
             <div class="field-row event-fields">
-              <label>Event amount<input id="event-amount" type="number" min="0.01" step="0.01" value="5.00"></label>
-              <label>Reason<input id="event-reason" value="Test adjustment"></label>
+              <label>Event amount<input id="event-amount" data-testid="event-amount" type="number" min="0.01" step="0.01" value="5.00"></label>
+              <label>Reason<input id="event-reason" data-testid="event-reason" value="Test adjustment"></label>
             </div>
             <div class="button-wrap event-buttons">
-              <button class="button button-outline" data-txn-action="refund">Refund</button><button class="button button-outline" data-txn-action="chargeback">Chargeback</button><button class="button button-outline" data-txn-action="disputes">Dispute</button><button class="button button-outline" data-txn-action="fees">Fee</button><button class="button button-outline" data-txn-action="adjustments">Adjustment</button><button class="button button-quiet" data-txn-action="details">Get transaction</button>
+              <button class="button button-outline" data-testid="transaction-refund" data-txn-action="refund">Refund</button><button class="button button-outline" data-testid="transaction-chargeback" data-txn-action="chargeback">Chargeback</button><button class="button button-outline" data-testid="transaction-dispute" data-txn-action="disputes">Dispute</button><button class="button button-outline" data-testid="transaction-fee" data-txn-action="fees">Fee</button><button class="button button-outline" data-testid="transaction-adjustment" data-txn-action="adjustments">Adjustment</button><button class="button button-quiet" data-testid="transaction-details" data-txn-action="details">Get transaction</button>
             </div>
-            <div id="transaction-stage-result" class="result-slot"></div>
+            <div id="transaction-stage-result" data-testid="transaction-stage-result" class="result-slot" role="status" aria-live="polite" data-state="idle"></div>
           </article>
         </div>
       </section>
@@ -154,18 +164,18 @@
           <span class="section-hint">Compare posted balance against ledger entries.</span>
         </div>
         <article class="panel lookup-panel">
-          <label class="lookup-input">Account reference<input id="lookup-account-reference" placeholder="acct_…" list="account-options"></label>
-          <div class="button-wrap"><button class="button button-outline" data-account-action="account">Account summary</button><button class="button button-outline" data-account-action="transactions">Transaction history</button><button class="button button-primary" data-account-action="reconciliation">Reconcile ledger <span>→</span></button></div>
-          <div id="account-result" class="result-slot"></div>
+          <label class="lookup-input">Account reference<input id="lookup-account-reference" data-testid="lookup-account-reference" placeholder="acct_…" list="account-options"></label>
+          <div class="button-wrap"><button class="button button-outline" data-testid="account-summary" data-account-action="account">Account summary</button><button class="button button-outline" data-testid="account-history" data-account-action="transactions">Transaction history</button><button class="button button-primary" data-testid="account-reconciliation" data-account-action="reconciliation">Reconcile ledger <span>→</span></button></div>
+          <div id="account-result" data-testid="account-result" class="result-slot" role="status" aria-live="polite" data-state="idle"></div>
         </article>
       </section>
 
       <section id="activity" class="workspace-section activity-section">
         <div class="section-heading"><div><div class="eyebrow">LIVE REQUESTS</div><h2>Activity log</h2></div><button id="clear-log" class="button button-quiet" type="button">Clear activity</button></div>
-        <div id="activity-log" class="activity-log"><div class="empty-state"><span>⌁</span><p>Your API requests and responses will appear here.</p><small>Start with a customer application above.</small></div></div>
+        <div id="activity-log" data-testid="activity-log" class="activity-log" role="log" aria-live="polite" aria-relevant="additions"><div class="empty-state"><span>⌁</span><p>Your API requests and responses will appear here.</p><small>Start with a customer application above.</small></div></div>
       </section>
 
-      <footer><span>TESLA CARD LIFECYCLE LAB</span><span>LOCAL MOCK MODE · DATA RESETS WHEN THE SERVER RESTARTS</span></footer>
+      <footer data-testid="page-footer"><span>TESLA CARD LIFECYCLE LAB</span><span>LOCAL MOCK MODE · RECORDS PERSIST IN THE CONFIGURED DATABASE</span></footer>
     </main>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

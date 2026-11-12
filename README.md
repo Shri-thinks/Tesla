@@ -62,6 +62,12 @@ In the website's Connection settings, enter `local-development-only` as the API 
 
 The app binds to loopback (`127.0.0.1`) by default, keeping the mock API local to the development machine. It is not intended to be exposed to a public network.
 
+The website provides stable `data-testid` attributes for its main forms, fields, actions, results, and activity entries. While a request is running, the active form or button exposes `aria-busy="true"` and `data-state="loading"`; result containers expose `data-state="loading"`, then `success` or `error`, along with `data-http-status` after completion. These selectors and state attributes are intended to make browser checks and explicit waits reliable without depending on CSS classes or fixed sleeps.
+
+Use the **Test run references** controls to apply one unique run ID to the customer and merchant references before a scenario. The UI creates fresh idempotency keys per action. Successful API responses and recent entity references appear in the activity log and stay available in that browser tab's session storage. The records themselves persist in the configured database across server restarts; use a separate database per automation run rather than relying on a destructive reset.
+
+A cross-layer scenario can create an application with the API, use the returned account/card references in the website, complete a transaction, and then query the matching account, transaction, and ledger rows in DBeaver. The UI is not a test framework and does not provide database cleanup or reset operations.
+
 ## Mock account, card, and transaction API
 
 Every request requires `X-Tesla-API-Key: local-development-only` and JSON content type when sending a body. The simulator creates opaque references and a clearly marked mock token; it never creates or accepts a PAN, CVV, or PIN. The PIN-change operation accepts only a reference to a secure external PIN-change flow.
@@ -145,7 +151,7 @@ Then call the stages in order, using the returned `transactionReference`:
 
 Successful authorization returns `status: AUTHORIZED` and `decision: APPROVED`. A decline returns `status: DECLINED` and a reason in `message`. Reversals are allowed only before clearing; clearing, settlement, posting, and after-transaction events enforce their lifecycle states. Refunds and chargebacks cannot cumulatively exceed the posted transaction amount. Mutating requests with idempotency keys reject reuse of a key with a different request.
 
-Applications, accounts, cards, transactions, ledger events, and idempotency results are stored in PostgreSQL and remain available after an application restart. The UI and API never connect directly to PostgreSQL; use the backend for application behavior and a database client for database checks. This is a local testing implementation, not a production banking or payment system.
+Applications, accounts, cards, transactions, ledger events, and idempotency results are stored in the configured database and remain available after an application restart. By default that is the file-backed H2 database; PostgreSQL is optional. The UI and API never connect directly to the database; use the backend for application behavior and a database client for database checks. This is a local testing implementation, not a production banking or payment system.
 
 ### Database testing examples
 

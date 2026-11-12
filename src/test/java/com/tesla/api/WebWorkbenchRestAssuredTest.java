@@ -22,7 +22,8 @@ class WebWorkbenchRestAssuredTest {
                 .get("/")
                 .then()
                 .statusCode(200)
-                .body(containsString("Card lifecycle,"));
+                .body(containsString("Card lifecycle,"))
+                .body(containsString("id=\"api-connection\""));
 
         RestAssured.given()
                 .baseUri("http://127.0.0.1")
@@ -30,7 +31,8 @@ class WebWorkbenchRestAssuredTest {
                 .get("/app.js")
                 .then()
                 .statusCode(200)
-                .body(containsString("/api/transactions/initiate"));
+                .body(containsString("/api/transactions/initiate"))
+                .body(containsString("byId(\"api-connection\")"));
 
         RestAssured.given()
                 .baseUri("http://127.0.0.1")
