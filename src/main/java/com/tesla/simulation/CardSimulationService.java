@@ -34,26 +34,31 @@ import java.util.function.Supplier;
 public class CardSimulationService {
 
     private static final BigDecimal MAX_SIMULATED_CREDIT_LIMIT = new BigDecimal("10000.00");
+    private final Map<String, ApplicationResponse> applications = new LinkedHashMap<>();
     private final Map<String, Account> accounts = new LinkedHashMap<>();
     private final Map<String, Card> cards = new LinkedHashMap<>();
     private final Map<String, SimulatedTransaction> transactions = new LinkedHashMap<>();
     private final Map<String, List<LedgerEventResponse>> ledgerEntries = new LinkedHashMap<>();
-    private final Map<String, IdempotentResult> idempotentResults = new LinkedHashMap<>();
+    private final Map<IdempotencyKey, IdempotentResult> idempotentResults = new LinkedHashMap<>();
 
     public synchronized ApplicationResponse apply(ApplicationRequest request) {
         return idempotent("application", request.idempotencyKey(), request, () -> {
             String applicationReference = reference("app");
             if (request.requestedCreditLimit().compareTo(MAX_SIMULATED_CREDIT_LIMIT) > 0) {
-                return new ApplicationResponse(applicationReference, request.customerReference(), "DECLINED",
+                ApplicationResponse response = new ApplicationResponse(applicationReference, request.customerReference(), "DECLINED",
                         null, BigDecimal.ZERO, "Requested limit exceeds the mock approval threshold.");
+                applications.put(applicationReference, response);
+                return response;
             }
             String accountReference = reference("acct");
             Account account = new Account(accountReference, request.customerReference(),
                     request.requestedCreditLimit());
             accounts.put(accountReference, account);
             ledgerEntries.put(accountReference, new ArrayList<>());
-            return new ApplicationResponse(applicationReference, request.customerReference(), "APPROVED",
+            ApplicationResponse response = new ApplicationResponse(applicationReference, request.customerReference(), "APPROVED",
                     accountReference, request.requestedCreditLimit(), "Mock application approved.");
+            applications.put(applicationReference, response);
+            return response;
         }, ApplicationResponse.class);
     }
 
@@ -463,7 +468,7 @@ public class CardSimulationService {
 
     private <T> T idempotent(
             String scope, String key, Object request, Supplier<T> action, Class<T> resultType) {
-        String registryKey = scope + ":" + key;
+        IdempotencyKey registryKey = new IdempotencyKey(scope, key);
         IdempotentResult existing = idempotentResults.get(registryKey);
         if (existing != null) {
             if (!existing.request().equals(request)) {
@@ -488,32 +493,77 @@ public class CardSimulationService {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, type + " not found: " + reference);
     }
 
-    private static final class Account {
-        private final String reference;
-        private final String customerReference;
-        private final BigDecimal creditLimit;
-        private final List<String> cardReferences = new ArrayList<>();
-        private String status = "OPEN";
-        private BigDecimal postedBalance = BigDecimal.ZERO;
+    Map<String, ApplicationResponse> applicationsForPersistence() {
+        return applications;
+    }
 
-        private Account(String reference, String customerReference, BigDecimal creditLimit) {
+    Map<String, Account> accountsForPersistence() {
+        return accounts;
+    }
+
+    Map<String, Card> cardsForPersistence() {
+        return cards;
+    }
+
+    Map<String, SimulatedTransaction> transactionsForPersistence() {
+        return transactions;
+    }
+
+    Map<String, List<LedgerEventResponse>> ledgerEntriesForPersistence() {
+        return ledgerEntries;
+    }
+
+    Map<IdempotencyKey, IdempotentResult> idempotencyResultsForPersistence() {
+        return idempotentResults;
+    }
+
+    void restoreState(
+            Map<String, ApplicationResponse> loadedApplications,
+            Map<String, Account> loadedAccounts,
+            Map<String, Card> loadedCards,
+            Map<String, SimulatedTransaction> loadedTransactions,
+            Map<String, List<LedgerEventResponse>> loadedLedgerEntries,
+            Map<IdempotencyKey, IdempotentResult> loadedIdempotencyResults) {
+        applications.clear();
+        applications.putAll(loadedApplications);
+        accounts.clear();
+        accounts.putAll(loadedAccounts);
+        cards.clear();
+        cards.putAll(loadedCards);
+        transactions.clear();
+        transactions.putAll(loadedTransactions);
+        ledgerEntries.clear();
+        ledgerEntries.putAll(loadedLedgerEntries);
+        idempotentResults.clear();
+        idempotentResults.putAll(loadedIdempotencyResults);
+    }
+
+    static final class Account {
+        final String reference;
+        final String customerReference;
+        final BigDecimal creditLimit;
+        final List<String> cardReferences = new ArrayList<>();
+        String status = "OPEN";
+        BigDecimal postedBalance = BigDecimal.ZERO;
+
+        Account(String reference, String customerReference, BigDecimal creditLimit) {
             this.reference = reference;
             this.customerReference = customerReference;
             this.creditLimit = creditLimit;
         }
     }
 
-    private static final class Card {
-        private final String reference;
-        private final String accountReference;
-        private final Network network;
-        private final String tokenReference;
-        private final YearMonth expiresAt;
-        private String status = "ISSUED";
-        private BigDecimal dailyLimit;
-        private boolean temporarilyLocked;
+    static final class Card {
+        final String reference;
+        final String accountReference;
+        final Network network;
+        String tokenReference;
+        YearMonth expiresAt;
+        String status = "ISSUED";
+        BigDecimal dailyLimit;
+        boolean temporarilyLocked;
 
-        private Card(String reference, String accountReference, Network network, BigDecimal dailyLimit) {
+        Card(String reference, String accountReference, Network network, BigDecimal dailyLimit) {
             this.reference = reference;
             this.accountReference = accountReference;
             this.network = network;
@@ -523,30 +573,34 @@ public class CardSimulationService {
         }
     }
 
-    private static final class SimulatedTransaction {
-        private final String reference;
-        private final String cardReference;
-        private final String merchantReference;
-        private final String currency;
-        private final Instant createdAt = Instant.now();
-        private BigDecimal amount;
-        private BigDecimal authorizedAmount;
-        private LocalDate authorizationDate;
-        private String status = "INITIATED";
-        private String decision = "PENDING";
-        private String authorizationCode;
-        private String message = "Awaiting authorization.";
+    static final class SimulatedTransaction {
+        final String reference;
+        final String cardReference;
+        final String merchantReference;
+        final String currency;
+        Instant createdAt;
+        BigDecimal amount;
+        BigDecimal authorizedAmount;
+        LocalDate authorizationDate;
+        String status = "INITIATED";
+        String decision = "PENDING";
+        String authorizationCode;
+        String message = "Awaiting authorization.";
 
-        private SimulatedTransaction(
+        SimulatedTransaction(
                 String reference, String cardReference, String merchantReference, BigDecimal amount, String currency) {
             this.reference = reference;
             this.cardReference = cardReference;
             this.merchantReference = merchantReference;
-            this.amount = amount;
             this.currency = currency;
+            this.amount = amount;
+            this.createdAt = Instant.now();
         }
     }
 
-    private record IdempotentResult(Object request, Object result) {
+    record IdempotencyKey(String scope, String key) {
+    }
+
+    record IdempotentResult(Object request, Object result) {
     }
 }

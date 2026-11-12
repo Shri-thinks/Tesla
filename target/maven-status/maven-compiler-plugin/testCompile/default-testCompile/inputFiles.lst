@@ -2,3 +2,4 @@ D:\Java-eclipse-workspace\Tesla\src\test\java\com\tesla\api\CardLifecycleControl
 D:\Java-eclipse-workspace\Tesla\src\test\java\com\tesla\api\CardLifecycleRestAssuredTest.java
 D:\Java-eclipse-workspace\Tesla\src\test\java\com\tesla\api\CardSimulationRestAssuredTest.java
 D:\Java-eclipse-workspace\Tesla\src\test\java\com\tesla\api\WebWorkbenchRestAssuredTest.java
+D:\Java-eclipse-workspace\Tesla\src\test\java\com\tesla\config\H2TcpServerTest.java

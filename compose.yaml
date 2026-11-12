@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tesla-postgres
+    environment:
+      POSTGRES_DB: tesla
+      POSTGRES_USER: tesla
+      POSTGRES_PASSWORD: tesla-local-password
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - tesla-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tesla -d tesla"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tesla-postgres-data:

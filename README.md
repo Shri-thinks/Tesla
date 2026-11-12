@@ -1,6 +1,6 @@
 # Tesla Card Lifecycle Simulator
 
-Tesla is a Java 17 Spring Boot API for exercising a mock card and transaction lifecycle. It supports Visa, Mastercard, and Amex references without connecting to payment networks.
+Tesla is a Java 17 Spring Boot website and API for exercising a mock card and transaction lifecycle. It supports Visa, Mastercard, and Amex references without connecting to payment networks. The configured database stores simulator state; Flyway applies schema migrations at startup.
 
 ## Run
 
@@ -10,8 +10,45 @@ From this directory:
 mvn spring-boot:run
 ```
 
-By default, the service listens on `http://127.0.0.1:8080` and uses in-memory mock state. Stop any already-running instance before restarting it to load code changes.
+### Database options
+
+The app runs without installing a database server: by default, it starts an H2 TCP server on `127.0.0.1:9123` and stores data in the `data` folder. The app and a database client such as DBeaver connect through TCP to the same file-backed database, so you can inspect committed transactions while the website remains running. The files survive application restarts. No Docker or database installation is required.
+
+To inspect this database with DBeaver, create an **H2 Remote** (sometimes labeled **H2 Server**) connection using:
+
+```text
+JDBC URL: jdbc:h2:tcp://127.0.0.1:9123/tesla;MODE=PostgreSQL
+User: sa
+Password: (empty)
+```
+
+Do not use the embedded connection type or add `AUTO_SERVER=TRUE`. The application starts the H2 server and Flyway applies schema changes at startup. H2 accepts local clients only by default; do not expose port 9123 to an untrusted network.
+
+The TCP port defaults to 9123 and can be changed with `TESLA_H2_TCP_PORT`; use the same port in DBeaver. H2 accepts local clients only by default; the app does not enable remote access. The data folder defaults to `./data` relative to the project working directory and can be changed with `TESLA_H2_BASE_DIR`.
+
+PostgreSQL is also supported if you already have it installed. Set the database mode and connection environment variables before launching the app:
+
+```powershell
+$env:TESLA_DATABASE_MODE = "postgres"
+$env:TESLA_DB_URL = "jdbc:postgresql://127.0.0.1:5432/tesla"
+$env:TESLA_DB_USERNAME = "tesla"
+$env:TESLA_DB_PASSWORD = "your-local-password"
+```
+
+Docker Desktop is optional. If it is available, the included Compose file can start a local PostgreSQL instance:
+
+```powershell
+docker compose up -d
+```
+
+The Compose database is named `tesla`, with local development credentials `tesla` / `tesla-local-password`, and keeps its data in the `tesla-postgres-data` Docker volume.
+
+### Start the application
+
+By default, the service listens on `http://127.0.0.1:8080`. It remains bound to loopback for local testing. Stop any already-running instance before restarting it to load code changes.
 The API requires the `X-Tesla-API-Key` header. The default key (`local-development-only`) is for local development only; set `TESLA_API_KEY` to a secret value before use in any shared environment.
+
+Database connection settings can be overridden with `TESLA_DB_URL`, `TESLA_DB_USERNAME`, and `TESLA_DB_PASSWORD`. Flyway automatically creates and updates the tables in `src/main/resources/db/migration`.
 
 ## Website and API testing
 
@@ -108,7 +145,34 @@ Then call the stages in order, using the returned `transactionReference`:
 
 Successful authorization returns `status: AUTHORIZED` and `decision: APPROVED`. A decline returns `status: DECLINED` and a reason in `message`. Reversals are allowed only before clearing; clearing, settlement, posting, and after-transaction events enforce their lifecycle states. Refunds and chargebacks cannot cumulatively exceed the posted transaction amount. Mutating requests with idempotency keys reject reuse of a key with a different request.
 
-The simulator stores state only in process memory; all accounts, cards, holds, and ledger entries reset when the application restarts. This is a local testing implementation, not a production banking or payment system.
+Applications, accounts, cards, transactions, ledger events, and idempotency results are stored in PostgreSQL and remain available after an application restart. The UI and API never connect directly to PostgreSQL; use the backend for application behavior and a database client for database checks. This is a local testing implementation, not a production banking or payment system.
+
+### Database testing examples
+
+Connect DBeaver using the H2 settings above, or use your PostgreSQL client if running PostgreSQL. Inspect the lifecycle tables with:
+
+```sql
+SELECT * FROM applications ORDER BY application_reference;
+SELECT * FROM accounts ORDER BY account_reference;
+SELECT * FROM cards ORDER BY card_reference;
+SELECT * FROM simulated_transactions ORDER BY created_at;
+SELECT * FROM ledger_events ORDER BY created_at;
+SELECT * FROM idempotency_results ORDER BY scope, idempotency_key;
+```
+
+The test suite uses isolated H2 databases in PostgreSQL compatibility mode and runs the same Flyway migration. It checks persisted account, card, transaction, and idempotency rows, plus simultaneous app and TCP database-client access. To run it:
+
+```powershell
+mvn test
+```
+
+To stop the local database while retaining its data:
+
+```powershell
+docker compose stop
+```
+
+To stop it and remove the database volume/data, use `docker compose down -v`. This removes the simulator database contents.
 
 ## Legacy network card lifecycle API
 

@@ -4,16 +4,24 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.startsWith;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class CardSimulationRestAssuredTest {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @LocalServerPort
     private int port;
@@ -192,6 +200,59 @@ class CardSimulationRestAssuredTest {
                 .then().statusCode(200).body("availableCredit", equalTo(100f));
         request().post("/api/accounts/{accountReference}/close", accountReference)
                 .then().statusCode(200).body("status", equalTo("CLOSED"));
+    }
+
+    @Test
+    void persistsLifecycleRecordsInRelationalTables() {
+        String accountReference = createAccount("300.00");
+        String cardReference = issueCard(accountReference, "150.00");
+        request().post("/api/cards/{cardReference}/activate", cardReference).then().statusCode(200);
+        String transactionReference = request()
+                .body("""
+                        {
+                          "cardReference": "%s",
+                          "merchantReference": "database-test-merchant",
+                          "amount": 12.00,
+                          "currency": "USD",
+                          "idempotencyKey": "%s"
+                        }
+                        """.formatted(cardReference, UUID.randomUUID()))
+                .post("/api/transactions/initiate")
+                .then().statusCode(201).extract().path("transactionReference");
+        request().post("/api/transactions/{transactionReference}/authorize", transactionReference)
+                .then().statusCode(200);
+        assertEquals("AUTHORIZED",
+                jdbcTemplate.queryForObject(
+                        "SELECT status FROM simulated_transactions WHERE transaction_reference = ?",
+                        String.class, transactionReference));
+        request().body("{\"amount\":10.00}")
+                .post("/api/transactions/{transactionReference}/clear", transactionReference)
+                .then().statusCode(200);
+        request().post("/api/transactions/{transactionReference}/settle", transactionReference)
+                .then().statusCode(200);
+        request().post("/api/transactions/{transactionReference}/post", transactionReference)
+                .then().statusCode(200);
+
+        assertEquals(1,
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_reference = ?",
+                        Integer.class, accountReference));
+        assertEquals("ACTIVE",
+                jdbcTemplate.queryForObject("SELECT status FROM cards WHERE card_reference = ?",
+                        String.class, cardReference));
+        assertEquals("POSTED",
+                jdbcTemplate.queryForObject(
+                        "SELECT status FROM simulated_transactions WHERE transaction_reference = ?",
+                        String.class, transactionReference));
+        assertEquals(new BigDecimal("10.00"),
+                jdbcTemplate.queryForObject(
+                        "SELECT posted_balance FROM accounts WHERE account_reference = ?",
+                        BigDecimal.class, accountReference));
+        assertEquals(1,
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM ledger_events WHERE transaction_reference = ?",
+                        Integer.class, transactionReference));
+        assertTrue(
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM idempotency_results", Integer.class) > 0);
     }
 
     private String createAccount(String creditLimit) {
